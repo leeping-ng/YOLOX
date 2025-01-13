@@ -1,3 +1,9 @@
+"""
+How to perform inference:
+Update self.num_classes in yolox/exp/yolox_base.py 
+python demo.py image -n yolox-s --ckpt weights/drill_site_bordeaux_v3_v1.pth --label_path weights/drill_site_bordeaux_v3_v1.txt --path ~/Clients/HDI/2025_01_02-11_00_00-2_aux_crane_extended.jpg --conf 0.25 --nms 0.45 --tsize 640 --save_result --device gpu
+"""
+
 #!/usr/bin/env python3
 # -*- coding:utf-8 -*-
 # Copyright (c) Megvii, Inc. and its affiliates.
@@ -12,7 +18,6 @@ import cv2
 import torch
 
 from yolox.data.data_augment import ValTransform
-from yolox.data.datasets import COCO_CLASSES
 from yolox.exp import get_exp
 from yolox.utils import fuse_model, get_model_info, postprocess, vis
 
@@ -46,6 +51,9 @@ def make_parser():
         help="please input your experiment description file",
     )
     parser.add_argument("-c", "--ckpt", default=None, type=str, help="ckpt for eval")
+    parser.add_argument("--label_path", default=None, required=True,
+                        type=str, help="path to annotations in txt")
+
     parser.add_argument(
         "--device",
         default="cpu",
@@ -97,12 +105,18 @@ def get_image_list(path):
     return image_names
 
 
+def get_classnames_from_txt(file_path):
+    with open(file_path, 'r') as file:
+        lines = file.read().splitlines()
+    return tuple(lines)
+
+
 class Predictor(object):
     def __init__(
         self,
         model,
         exp,
-        cls_names=COCO_CLASSES,
+        cls_names,
         trt_file=None,
         decoder=None,
         device="cpu",
@@ -112,7 +126,7 @@ class Predictor(object):
         self.model = model
         self.cls_names = cls_names
         self.decoder = decoder
-        self.num_classes = exp.num_classes
+        self.num_classes = 6  # exp.num_classes
         self.confthre = exp.test_conf
         self.nmsthre = exp.nmsthre
         self.test_size = exp.test_size
@@ -302,8 +316,10 @@ def main(exp, args):
         trt_file = None
         decoder = None
 
+    cls_names = get_classnames_from_txt(args.label_path)
+
     predictor = Predictor(
-        model, exp, COCO_CLASSES, trt_file, decoder,
+        model, exp, cls_names, trt_file, decoder,
         args.device, args.fp16, args.legacy,
     )
     current_time = time.localtime()
@@ -316,5 +332,6 @@ def main(exp, args):
 if __name__ == "__main__":
     args = make_parser().parse_args()
     exp = get_exp(args.exp_file, args.name)
+    print(args)
 
     main(exp, args)

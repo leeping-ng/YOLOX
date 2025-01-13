@@ -4,6 +4,8 @@
 # user experiments directory
 YOLOX_outputs/
 datasets/
+weights/
+=2.0.2
 # do not ignore datasets under yolox/data
 !*yolox/data/datasets/
 
